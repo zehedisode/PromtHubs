@@ -4,23 +4,21 @@ Modern, AI-destekli kart tasarlama uygulaması. Gemini AI ve Imagen ile görsell
 
 ## 🚀 Hızlı Başlangıç
 
-### Otomatik Başlatma (Önerilen)
+### Vite ile Başlatma (Önerilen)
 ```bash
-./start.sh
+npm install
+npm run dev
 ```
 
-Tarayıcınızda otomatik olarak `http://localhost:8080` açılacak.
+Tarayıcınızda otomatik olarak `http://localhost:5173` açılacak.
 
-### Manuel Başlatma
+### Alternatif: Sadece Frontend (Backend olmadan)
 ```bash
 # Python 3 ile
 python3 -m http.server 8080
 
 # Node.js ile
 npx http-server -p 8080
-
-# PHP ile
-php -S localhost:8080
 ```
 
 Sonra tarayıcınızda: **http://localhost:8080**

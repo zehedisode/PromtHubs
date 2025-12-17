@@ -16,7 +16,7 @@ export const CONFIG = {
     STORAGE_KEY: 'promthubs-state-v5.4',
 
     // Image processing
-    MAX_IMAGE_DIMENSION: 1024,
+    MAX_IMAGE_DIMENSION: 2048,
     EXPORT_SCALE: 4,
     BLUR_AMOUNT: 12,
     FILL_BLUR_AMOUNT: 25,

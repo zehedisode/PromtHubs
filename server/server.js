@@ -6,9 +6,43 @@ const fetch = require('node-fetch');
 const app = express();
 const PORT = 3000;
 
+// Rate Limiting - Basit in-memory limiter
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 dakika
+const RATE_LIMIT_MAX_REQUESTS = 20; // Dakikada maksimum 20 istek
+
+function rateLimiter(req, res, next) {
+    const ip = req.ip || req.connection.remoteAddress;
+    const now = Date.now();
+
+    if (!rateLimitMap.has(ip)) {
+        rateLimitMap.set(ip, { count: 1, startTime: now });
+        return next();
+    }
+
+    const record = rateLimitMap.get(ip);
+
+    if (now - record.startTime > RATE_LIMIT_WINDOW_MS) {
+        // Pencere süresi doldu, sıfırla
+        rateLimitMap.set(ip, { count: 1, startTime: now });
+        return next();
+    }
+
+    if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+        return res.status(429).json({
+            error: 'Too many requests. Please try again later.',
+            retryAfter: Math.ceil((RATE_LIMIT_WINDOW_MS - (now - record.startTime)) / 1000)
+        });
+    }
+
+    record.count++;
+    next();
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Allow large image payloads
+app.use('/api', rateLimiter); // Rate limit API endpoints
 
 // Configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;

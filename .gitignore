@@ -5,3 +5,11 @@ node_modules
 site.html.backup
 .env
 dist/
+
+# Backup files
+*.backup
+*.bak
+
+# Telegram bot
+telegram-bot/.env
+telegram-bot/temp/

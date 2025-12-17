@@ -9,6 +9,65 @@ import { Logger } from './logger.js';
 // Re-export color analysis functions from dedicated module
 export { rgbToHex, hexToRgba, analyzeImageColors } from './color-analysis.js';
 
+/**
+ * Optimize/compress an image before use
+ * @param {string} imageSrc - Source image (URL or data URL)
+ * @param {Object} options - Optimization options
+ * @param {number} options.maxWidth - Maximum width (default: 2048)
+ * @param {number} options.maxHeight - Maximum height (default: 2048)
+ * @param {number} options.quality - JPEG quality 0-1 (default: 0.85)
+ * @returns {Promise<string>} Optimized image as data URL
+ */
+export function optimizeImage(imageSrc, options = {}) {
+    const { maxWidth = 2048, maxHeight = 2048, quality = 0.85 } = options;
+
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+
+        img.onload = () => {
+            let w = img.width;
+            let h = img.height;
+
+            // Calculate new dimensions maintaining aspect ratio
+            if (w > maxWidth || h > maxHeight) {
+                const ratio = Math.min(maxWidth / w, maxHeight / h);
+                w = Math.floor(w * ratio);
+                h = Math.floor(h * ratio);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+
+            // Use WebP if supported, fallback to JPEG
+            const mimeType = canvas.toDataURL('image/webp').startsWith('data:image/webp')
+                ? 'image/webp'
+                : 'image/jpeg';
+
+            const optimized = canvas.toDataURL(mimeType, quality);
+
+            Logger.info('UTILS', 'Image optimized', {
+                original: `${img.width}x${img.height}`,
+                optimized: `${w}x${h}`,
+                format: mimeType
+            });
+
+            resolve(optimized);
+        };
+
+        img.onerror = (e) => {
+            Logger.error('UTILS', 'Image optimization failed', { error: e });
+            resolve(imageSrc); // Fallback to original
+        };
+
+        img.src = imageSrc;
+    });
+}
+
 
 /**
  * Create a blurred version of an image
