@@ -24,7 +24,10 @@ async function generateCard(imageBuffer, options) {
         gradientIntensity = 100
     } = options;
 
-    console.log('Generating high-fidelity card with Sharp...', { themeColor, model, safeZone });
+    // Clean emojis from prompt text for SVG compatibility
+    const cleanPrompt = promptText.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
+
+    console.log('Generating high-fidelity card with Sharp...', { themeColor, safeZone });
 
     const width = 1080;
     const height = 1920;
@@ -38,9 +41,10 @@ async function generateCard(imageBuffer, options) {
         let baseLayer;
         if (safeZone) {
             baseLayer = await sharp(imageBuffer)
+                .rotate() // Auto-rotate based on EXIF
                 .resize(width, height, { fit: 'cover' })
-                .blur(40) // Web version uses 20px but SVG/Sharp scale differs
-                .modulate({ brightness: 0.6, saturation: 1.2 })
+                .blur(30)
+                .modulate({ brightness: 0.5, saturation: 1.1 })
                 .toBuffer();
         } else {
             baseLayer = await sharp({
@@ -49,9 +53,17 @@ async function generateCard(imageBuffer, options) {
         }
 
         // --- LAYER 1: Main Image ---
-        const szMargin = safeZone ? Math.round(width * (safeZoneScale / 400)) : 0;
+        const szPercent = safeZoneScale / 400; // 25 / 400 = 0.0625
+        const szMargin = safeZone ? Math.round(width * szPercent) : 0;
+        const mainInnerWidth = width - (szMargin * 2);
+        const mainInnerHeight = height - (szMargin * 2);
+
         const mainImage = await sharp(imageBuffer)
-            .resize(width - (szMargin * 2), height - (szMargin * 2), { fit: 'cover' })
+            .rotate()
+            .resize(mainInnerWidth, mainInnerHeight, {
+                fit: 'cover',
+                position: 'center'
+            })
             .toBuffer();
 
         // --- LAYER 2: Gradient Overlay ---
@@ -61,28 +73,31 @@ async function generateCard(imageBuffer, options) {
                 <defs>
                     <linearGradient id="grad" x1="0%" y1="100%" x2="0%" y2="0%">
                         <stop offset="0%" style="stop-color:black;stop-opacity:${gradientIntensityLocal}" />
-                        <stop offset="40%" style="stop-color:black;stop-opacity:${gradientIntensityLocal * 0.8}" />
+                        <stop offset="35%" style="stop-color:black;stop-opacity:${gradientIntensityLocal * 0.7}" />
                         <stop offset="100%" style="stop-color:black;stop-opacity:0" />
                     </linearGradient>
                 </defs>
-                <rect x="${szMargin}" y="${szMargin}" width="${width - (szMargin * 2)}" height="${height - (szMargin * 2)}" 
+                <rect x="${szMargin}" y="${szMargin}" width="${mainInnerWidth}" height="${mainInnerHeight}" 
                       fill="url(#grad)"/>
             </svg>
         `);
 
         // --- LAYER 3: Text & UI Overlay ---
-        const escapedText = escapeXml(promptText);
+        const escapedText = escapeXml(cleanPrompt);
         const borderColor = showBorder ? themeColor : 'transparent';
         const modelLabel = (model || 'Gemini').toUpperCase();
-
-        // Exact paddings and margins from Web UI
         const padding = 60 + szMargin;
+
+        // Calculate dynamic text height to avoid overlap
+        const wrappedTextLines = wrapText(escapedText, Math.floor(mainInnerWidth * 0.8 / (fontSize * 0.55)));
+        const totalTextHeight = wrappedTextLines.length * (fontSize * 1.4);
+        const promptStartY = height - padding - totalTextHeight - 120; // 120px for labels/paddings
 
         const textOverlay = Buffer.from(`
             <svg width="${width}" height="${height}">
-                <!-- Main Border (Layer 4) -->
+                <!-- Main Border -->
                 <rect x="${szMargin + 20}" y="${szMargin + 20}" 
-                      width="${width - (szMargin * 2) - 40}" height="${height - (szMargin * 2) - 40}" 
+                      width="${mainInnerWidth - 40}" height="${mainInnerHeight - 40}" 
                       fill="none" stroke="${borderColor}" stroke-width="2" rx="24"/>
                 
                 <!-- Top Branding -->
@@ -92,24 +107,27 @@ async function generateCard(imageBuffer, options) {
                     PROMT<tspan fill="${themeColor}">HUBS</tspan>
                 </text>
                 
-                <!-- Model Badge -->
-                <rect x="${padding}" y="${height - padding - 340}" width="${modelLabel.length * 18 + 32}" height="42" 
-                      fill="${themeColor}" rx="8"/>
-                <text x="${padding + 16}" y="${height - padding - 310}" 
-                      font-family="Arial, sans-serif" font-size="22" font-weight="bold"
-                      fill="black">
-                    ${modelLabel}
-                </text>
-                
-                <!-- PROMPT Label -->
-                <text x="${padding}" y="${height - padding - 230}" 
-                      font-family="Arial, sans-serif" font-size="56" font-weight="bold"
-                      fill="white">
-                    PROMPT
-                </text>
-                
-                <!-- Prompt Text -->
-                ${generateWrappedText(escapedText, padding, height - padding - 170, width - (padding * 2), fontSize)}
+                <!-- Model Badge & Labels (Positioned dynamically) -->
+                <g transform="translate(0, ${promptStartY})">
+                    <rect x="${padding}" y="-130" width="${modelLabel.length * 18 + 32}" height="42" 
+                          fill="${themeColor}" rx="8"/>
+                    <text x="${padding + 16}" y="-100" 
+                          font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="black">
+                        ${modelLabel}
+                    </text>
+                    
+                    <text x="${padding}" y="-30" 
+                          font-family="Arial, sans-serif" font-size="56" font-weight="bold" fill="white">
+                        PROMPT
+                    </text>
+                    
+                    <!-- Prompt Text Lines -->
+                    ${wrappedTextLines.map((line, i) =>
+            `<text x="${padding}" y="${i * fontSize * 1.4 + 30}" 
+                               font-family="monospace" font-size="${fontSize}" 
+                               fill="white" style="text-shadow: 0 2px 8px rgba(0,0,0,0.9);">${line}</text>`
+        ).join('\n')}
+                </g>
             </svg>
         `);
 
@@ -123,7 +141,6 @@ async function generateCard(imageBuffer, options) {
             .png({ quality: 100 })
             .toBuffer();
 
-        console.log('Advanced card generation successful!');
         return result;
 
     } catch (err) {
@@ -133,16 +150,15 @@ async function generateCard(imageBuffer, options) {
 }
 
 /**
- * Generate wrapped text for SVG with correct spacing
+ * Helper to wrap text into lines
  */
-function generateWrappedText(text, x, startY, maxWidth, fontSize) {
-    const charPerLine = Math.floor(maxWidth / (fontSize * 0.52));
+function wrapText(text, maxChars) {
     const words = text.split(/\s+/);
     const lines = [];
     let currentLine = '';
 
     words.forEach(word => {
-        if ((currentLine + ' ' + word).length <= charPerLine) {
+        if ((currentLine + ' ' + word).length <= maxChars) {
             currentLine = currentLine ? currentLine + ' ' + word : word;
         } else {
             if (currentLine) lines.push(currentLine);
@@ -150,15 +166,7 @@ function generateWrappedText(text, x, startY, maxWidth, fontSize) {
         }
     });
     if (currentLine) lines.push(currentLine);
-
-    // Limit to prevent overflow
-    const displayLines = lines.slice(0, 10);
-
-    return displayLines.map((line, i) =>
-        `<text x="${x}" y="${startY + (i * fontSize * 1.4)}" 
-               font-family="Courier New, monospace" font-size="${fontSize}" 
-               fill="white" style="text-shadow: 0 2px 8px rgba(0,0,0,0.9);">${line}</text>`
-    ).join('\n');
+    return lines.slice(0, 15); // Max 15 lines
 }
 
 function escapeXml(text) {
