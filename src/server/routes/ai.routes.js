@@ -30,7 +30,7 @@ router.post('/analyze', validate(analyzeSchema), async (req, res, next) => {
             contents: [{
                 parts: [
                     { text: prompt || 'Describe this image.' },
-                    { inlineData: { mimeType: "image/jpeg", data: imageBase64 } }
+                    { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } }
                 ]
             }]
         };
@@ -75,7 +75,7 @@ router.post('/generate', validate(generateSchema), async (req, res, next) => {
         const url = `${config.gemini.baseUrl}/${config.gemini.imagenModel}:predict?key=${effectiveKey}`;
         const payload = {
             instances: [{ prompt }],
-            parameters: { sampleCount: 1, aspectRatio: "9:16" }
+            parameters: { sampleCount: 1, aspectRatio: '9:16' }
         };
 
         const response = await fetch(url, {

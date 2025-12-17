@@ -92,7 +92,7 @@ bot.onText(/\/yeni/, (msg) => {
 
 bot.on('photo', async (msg) => {
     const chatId = msg.chat.id;
-    const session = getSession(chatId);
+    const _session = getSession(chatId);
 
     try {
         // Get largest photo
@@ -187,12 +187,13 @@ bot.on('callback_query', async (query) => {
                 showConfigMenu(chatId, session, messageId);
                 break;
 
-            case 'border':
+            case 'border': {
                 const newBorder = value === 'on';
                 updateSession(chatId, 'settings.showBorder', newBorder);
                 await bot.answerCallbackQuery(query.id, { text: `🖼 Çerçeve: ${newBorder ? 'Açık' : 'Kapalı'}` });
                 showConfigMenu(chatId, session, messageId);
                 break;
+            }
 
             case 'generate':
                 await bot.answerCallbackQuery(query.id, { text: '⏳ Kart oluşturuluyor...' });

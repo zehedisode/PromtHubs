@@ -4,7 +4,6 @@
  */
 
 const sharp = require('sharp');
-const CONFIG = require('./config');
 
 /**
  * Generate a styled card image using Sharp - Multi-layer composition
@@ -26,7 +25,8 @@ async function generateCard(imageBuffer, options) {
 
     // Stronger emoji cleaning: Removes everything higher than Latin-1 & Latin Extended-A 
     // but keeps Turkish characters (ç, ş, ğ, ı, ö, ü, Ç, Ş, Ğ, İ, Ö, Ü)
-    const cleanPrompt = promptText.replace(/[^\u0000-\u017F\s.,!?:;'"()-]/g, '');
+    // eslint-disable-next-line no-control-regex
+    const cleanPrompt = promptText.replace(/[^\u0020-\u017F\s.,!?:;'"()-]/g, '');
 
     console.log('Generating high-fidelity card with Sharp...', { themeColor, safeZone });
 

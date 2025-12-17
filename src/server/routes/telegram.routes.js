@@ -30,7 +30,7 @@ router.post('/send-telegram', async (req, res, next) => {
             return res.status(400).json({ error: 'TELEGRAM_CHANNEL_ID not configured in .env' });
         }
 
-        const base64Data = imageBase64.replace(/^data:image\/png;base64,/, "");
+        const base64Data = imageBase64.replace(/^data:image\/png;base64,/, '');
         const buffer = Buffer.from(base64Data, 'base64');
 
         // Telegram'a Document olarak gönder (kayıpsız)
