@@ -474,8 +474,8 @@ function showManualRemixModal() {
                         <div class="step-content">
                             <h4>İlk Komutu Yazın</h4>
                             <div class="prompt-box">
-                                <code>Create a new vertical image (9:16 aspect ratio) inspired by the image I uploaded, with a similar aesthetic but different and unique.</code>
-                                <button class="copy-btn" data-text="Create a new vertical image (9:16 aspect ratio) inspired by the image I uploaded, with a similar aesthetic but different and unique.">
+                                <code>Create a new vertical image (9:16 aspect ratio) inspired by the image I added, with a similar aesthetic but different and unique.</code>
+                                <button class="copy-btn" data-text="Create a new vertical image (9:16 aspect ratio) inspired by the image I added, with a similar aesthetic but different and unique.">
                                     <i class="fa-solid fa-copy"></i>
                                 </button>
                             </div>
@@ -486,8 +486,8 @@ function showManualRemixModal() {
                         <div class="step-content">
                             <h4>Prompt'u İsteyin</h4>
                             <div class="prompt-box">
-                                <code>Please also give me the exact and detailed English prompt text you used to create this new image.</code>
-                                <button class="copy-btn" data-text="Please also give me the exact and detailed English prompt text you used to create this new image.">
+                                <code>Please also provide me with the complete and detailed English prompt text you used to create this new image.</code>
+                                <button class="copy-btn" data-text="Please also provide me with the complete and detailed English prompt text you used to create this new image.">
                                     <i class="fa-solid fa-copy"></i>
                                 </button>
                             </div>
