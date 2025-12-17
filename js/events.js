@@ -412,18 +412,58 @@ async function handleExport() {
     const originalText = setButtonLoading(
         DOM.btnExport,
         true,
-        '<div class="spinner"></div> PNG Oluşturuluyor...'
+        '<div class="spinner"></div> İşleniyor...'
     );
 
     try {
         const dataUrl = await captureCanvas(state);
+
+        // 1. Download Local
         const filename = `promthubs-styled-card-${Date.now()}.png`;
         downloadDataUrl(dataUrl, filename);
+        Toast.success('Kart indirildi!');
+
+        // 2. Send to Telegram
+        try {
+            Logger.info('EVENTS', 'Sending to Telegram...');
+            const response = await fetch('http://localhost:3000/api/send-telegram', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    imageBase64: dataUrl,
+                    prompt: state.promptText
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                if (result.error && result.error.includes('TELEGRAM_CHANNEL_ID')) {
+                    Toast.error('Telegram Hatası: Kanal ID eksik (.env)');
+                } else {
+                    throw new Error(result.error || 'Server Error');
+                }
+            } else {
+                Toast.success('Telegram kanalına gönderildi! 🚀');
+            }
+
+        } catch (tgError) {
+            console.error('Telegram Upload Error:', tgError);
+            Logger.error('EVENTS', 'Telegram upload failed', tgError);
+            // Don't show error to user if it's just a config issue, or maybe show a warning
+            if (tgError.message.includes('Failed to fetch')) {
+                // Server might not be running or CORS
+                Logger.warn('EVENTS', 'Backend likely not running');
+            }
+        }
+
         Logger.info('EVENTS', 'Export successful', { filename });
-        Toast.success('Kart başarıyla indirildi!');
+
     } catch (err) {
         Logger.error('EVENTS', 'Export Failed', { box: err.message });
-        Toast.error('Dışa aktarma sırasında bir hata oluştu');
+        Toast.error('Bir hata oluştu: ' + err.message);
     } finally {
         restoreButton(DOM.btnExport, originalText);
     }

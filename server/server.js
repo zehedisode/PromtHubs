@@ -160,6 +160,44 @@ app.post('/api/generate', async (req, res) => {
     }
 });
 
+/**
+ * Endpoint: /api/send-telegram
+ * Desc: Send generated card to Telegram Channel
+ */
+const TelegramBot = require('node-telegram-bot-api');
+const telegramBot = process.env.TELEGRAM_BOT_TOKEN ? new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false }) : null;
+
+app.post('/api/send-telegram', async (req, res) => {
+    try {
+        const { imageBase64, prompt } = req.body;
+        const channelId = process.env.TELEGRAM_CHANNEL_ID;
+
+        if (!telegramBot) {
+            return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN not configured.' });
+        }
+
+        if (!channelId) {
+            return res.status(400).json({ error: 'TELEGRAM_CHANNEL_ID not configured in .env' });
+        }
+
+        // Remove header if present
+        const base64Data = imageBase64.replace(/^data:image\/png;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        // Send to Telegram
+        await telegramBot.sendPhoto(channelId, buffer, {
+            caption: `🎨 *Yeni Kart Oluşturuldu*\n\n📝 _${prompt ? prompt.substring(0, 100) + (prompt.length > 100 ? '...' : '') : 'No prompt'}_`,
+            parse_mode: 'Markdown'
+        });
+
+        res.json({ success: true, message: 'Sent to Telegram' });
+
+    } catch (error) {
+        console.error('❌ /api/send-telegram error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Start Server
 app.listen(PORT, () => {
     console.log(`✅ Backend Proxy running at http://localhost:${PORT}`);
