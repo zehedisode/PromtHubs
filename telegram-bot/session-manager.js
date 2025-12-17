@@ -1,12 +1,20 @@
 /**
- * SESSION MANAGER MODULE
- * Manages user sessions and state
+ * SESSION MANAGER MODULE (File-based for persistence)
+ * Manages user sessions and saves them to disk to survive restarts
  */
 
-const sessions = new Map();
+const fs = require('fs');
+const path = require('path');
 
-// Session timeout (30 minutes)
-const SESSION_TIMEOUT = 30 * 60 * 1000;
+const SESSIONS_DIR = path.join(__dirname, 'sessions');
+const IMAGES_DIR = path.join(__dirname, 'temp');
+
+// Ensure directories exist
+if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
+
+// Memory cache for active sessions
+const memoryCache = new Map();
 
 /**
  * Get or create user session
@@ -14,12 +22,37 @@ const SESSION_TIMEOUT = 30 * 60 * 1000;
  * @returns {Object} User session
  */
 function getSession(chatId) {
-    if (!sessions.has(chatId)) {
-        sessions.set(chatId, createNewSession());
+    // Check memory cache first
+    if (memoryCache.has(chatId)) {
+        const session = memoryCache.get(chatId);
+        session.lastActivity = Date.now();
+        return session;
     }
 
-    const session = sessions.get(chatId);
-    session.lastActivity = Date.now();
+    // Try to load from disk
+    const sessionPath = path.join(SESSIONS_DIR, `${chatId}.json`);
+    if (fs.existsSync(sessionPath)) {
+        try {
+            const data = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+
+            // Re-load image buffer from disk if it exists
+            const imagePath = path.join(IMAGES_DIR, `${chatId}.img`);
+            if (fs.existsSync(imagePath)) {
+                data.imageBuffer = fs.readFileSync(imagePath);
+            }
+
+            data.lastActivity = Date.now();
+            memoryCache.set(chatId, data);
+            return data;
+        } catch (err) {
+            console.error('Error loading session from disk:', err);
+        }
+    }
+
+    // Create new if not found
+    const session = createNewSession();
+    memoryCache.set(chatId, session);
+    saveToDisk(chatId, session);
     return session;
 }
 
@@ -29,9 +62,8 @@ function getSession(chatId) {
  */
 function createNewSession() {
     return {
-        step: 'idle', // idle, waiting_image, waiting_prompt, configuring
+        step: 'idle',
         imageBuffer: null,
-        imagePath: null,
         promptText: '',
         colorPalette: [],
         settings: {
@@ -50,7 +82,14 @@ function createNewSession() {
  * @param {number} chatId - Telegram chat ID
  */
 function resetSession(chatId) {
-    sessions.set(chatId, createNewSession());
+    const session = createNewSession();
+    memoryCache.set(chatId, session);
+
+    // Clean up disk
+    const sessionPath = path.join(SESSIONS_DIR, `${chatId}.json`);
+    const imagePath = path.join(IMAGES_DIR, `${chatId}.img`);
+    if (fs.existsSync(sessionPath)) fs.unlinkSync(sessionPath);
+    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
 }
 
 /**
@@ -61,28 +100,36 @@ function resetSession(chatId) {
  */
 function updateSession(chatId, key, value) {
     const session = getSession(chatId);
+
     if (key.includes('.')) {
         const [parent, child] = key.split('.');
         session[parent][child] = value;
     } else {
         session[key] = value;
     }
+
+    saveToDisk(chatId, session);
 }
 
 /**
- * Cleanup expired sessions
+ * Save session to disk
  */
-function cleanupSessions() {
-    const now = Date.now();
-    for (const [chatId, session] of sessions) {
-        if (now - session.lastActivity > SESSION_TIMEOUT) {
-            sessions.delete(chatId);
+function saveToDisk(chatId, session) {
+    try {
+        // Clone session to avoid side effects
+        const dataToSave = { ...session };
+
+        // Save image buffer separately and remove from JSON
+        if (session.imageBuffer) {
+            fs.writeFileSync(path.join(IMAGES_DIR, `${chatId}.img`), session.imageBuffer);
+            delete dataToSave.imageBuffer;
         }
+
+        fs.writeFileSync(path.join(SESSIONS_DIR, `${chatId}.json`), JSON.stringify(dataToSave, null, 2));
+    } catch (err) {
+        console.error('Error saving session to disk:', err);
     }
 }
-
-// Run cleanup every 10 minutes
-setInterval(cleanupSessions, 10 * 60 * 1000);
 
 module.exports = {
     getSession,
