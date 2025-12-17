@@ -24,8 +24,9 @@ async function generateCard(imageBuffer, options) {
         gradientIntensity = 100
     } = options;
 
-    // Clean emojis from prompt text for SVG compatibility
-    const cleanPrompt = promptText.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
+    // Stronger emoji cleaning: Removes everything higher than Latin-1 & Latin Extended-A 
+    // but keeps Turkish characters (ç, ş, ğ, ı, ö, ü, Ç, Ş, Ğ, İ, Ö, Ü)
+    const cleanPrompt = promptText.replace(/[^\u0000-\u017F\s.,!?:;'"()-]/g, '');
 
     console.log('Generating high-fidelity card with Sharp...', { themeColor, safeZone });
 
@@ -43,8 +44,8 @@ async function generateCard(imageBuffer, options) {
             baseLayer = await sharp(imageBuffer)
                 .rotate() // Auto-rotate based on EXIF
                 .resize(width, height, { fit: 'cover' })
-                .blur(30)
-                .modulate({ brightness: 0.5, saturation: 1.1 })
+                .blur(50) // Increased blur for better aesthetic
+                .modulate({ brightness: 0.45, saturation: 1.2 })
                 .toBuffer();
         } else {
             baseLayer = await sharp({
@@ -52,9 +53,8 @@ async function generateCard(imageBuffer, options) {
             }).png().toBuffer();
         }
 
-        // --- LAYER 1: Main Image ---
-        const szPercent = safeZoneScale / 400; // 25 / 400 = 0.0625
-        const szMargin = safeZone ? Math.round(width * szPercent) : 0;
+        // --- LAYER 1: Main Image (Centered and Cropped) ---
+        const szMargin = safeZone ? Math.round(width * (safeZoneScale / 400)) : 0;
         const mainInnerWidth = width - (szMargin * 2);
         const mainInnerHeight = height - (szMargin * 2);
 
@@ -66,14 +66,14 @@ async function generateCard(imageBuffer, options) {
             })
             .toBuffer();
 
-        // --- LAYER 2: Gradient Overlay ---
-        const gradientIntensityLocal = gradientIntensity / 100;
+        // --- LAYER 2: Gradient Overlay (Matching Web UI intensity) ---
+        const gIntensity = gradientIntensity / 100;
         const gradientOverlay = Buffer.from(`
             <svg width="${width}" height="${height}">
                 <defs>
                     <linearGradient id="grad" x1="0%" y1="100%" x2="0%" y2="0%">
-                        <stop offset="0%" style="stop-color:black;stop-opacity:${gradientIntensityLocal}" />
-                        <stop offset="35%" style="stop-color:black;stop-opacity:${gradientIntensityLocal * 0.7}" />
+                        <stop offset="0%" style="stop-color:black;stop-opacity:${gIntensity}" />
+                        <stop offset="45%" style="stop-color:black;stop-opacity:${gIntensity * 0.6}" />
                         <stop offset="100%" style="stop-color:black;stop-opacity:0" />
                     </linearGradient>
                 </defs>
@@ -82,50 +82,51 @@ async function generateCard(imageBuffer, options) {
             </svg>
         `);
 
-        // --- LAYER 3: Text & UI Overlay ---
+        // --- LAYER 3: Text & UI Overlay (Pixel Perfect Layout) ---
         const escapedText = escapeXml(cleanPrompt);
         const borderColor = showBorder ? themeColor : 'transparent';
         const modelLabel = (model || 'Gemini').toUpperCase();
-        const padding = 60 + szMargin;
+        const padding = 70 + szMargin; // Matching Web UI margins
 
-        // Calculate dynamic text height to avoid overlap
-        const wrappedTextLines = wrapText(escapedText, Math.floor(mainInnerWidth * 0.8 / (fontSize * 0.55)));
-        const totalTextHeight = wrappedTextLines.length * (fontSize * 1.4);
-        const promptStartY = height - padding - totalTextHeight - 120; // 120px for labels/paddings
+        const wrappedTextLines = wrapText(escapedText, Math.floor(mainInnerWidth * 0.8 / (fontSize * 0.52)));
+        const totalTextHeight = wrappedTextLines.length * (fontSize * 1.5);
+        const promptStartY = height - padding - totalTextHeight - 140;
 
         const textOverlay = Buffer.from(`
             <svg width="${width}" height="${height}">
-                <!-- Main Border -->
-                <rect x="${szMargin + 20}" y="${szMargin + 20}" 
-                      width="${mainInnerWidth - 40}" height="${mainInnerHeight - 40}" 
-                      fill="none" stroke="${borderColor}" stroke-width="2" rx="24"/>
-                
-                <!-- Top Branding -->
+                <!-- Branding -->
                 <text x="${width - padding}" y="${padding + 40}" 
-                      font-family="Arial, sans-serif" font-size="32" font-weight="bold"
+                      font-family="sans-serif" font-size="34" font-weight="900"
                       fill="white" text-anchor="end" style="letter-spacing: 2px;">
                     PROMT<tspan fill="${themeColor}">HUBS</tspan>
                 </text>
                 
-                <!-- Model Badge & Labels (Positioned dynamically) -->
+                <!-- Border -->
+                <rect x="${szMargin + 25}" y="${szMargin + 25}" 
+                      width="${mainInnerWidth - 50}" height="${mainInnerHeight - 50}" 
+                      fill="none" stroke="${borderColor}" stroke-width="2.5" rx="30"/>
+                
+                <!-- Content Group -->
                 <g transform="translate(0, ${promptStartY})">
-                    <rect x="${padding}" y="-130" width="${modelLabel.length * 18 + 32}" height="42" 
+                    <!-- Model Badge -->
+                    <rect x="${padding}" y="-135" width="${modelLabel.length * 19 + 40}" height="46" 
                           fill="${themeColor}" rx="8"/>
-                    <text x="${padding + 16}" y="-100" 
-                          font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="black">
+                    <text x="${padding + 20}" y="-103" 
+                          font-family="sans-serif" font-size="24" font-weight="900" fill="black">
                         ${modelLabel}
                     </text>
                     
-                    <text x="${padding}" y="-30" 
-                          font-family="Arial, sans-serif" font-size="56" font-weight="bold" fill="white">
+                    <!-- PROMPT Label -->
+                    <text x="${padding}" y="-35" 
+                          font-family="sans-serif" font-size="62" font-weight="900" fill="white">
                         PROMPT
                     </text>
                     
-                    <!-- Prompt Text Lines -->
+                    <!-- Prompt Text -->
                     ${wrappedTextLines.map((line, i) =>
-            `<text x="${padding}" y="${i * fontSize * 1.4 + 30}" 
+            `<text x="${padding}" y="${i * fontSize * 1.5 + 40}" 
                                font-family="monospace" font-size="${fontSize}" 
-                               fill="white" style="text-shadow: 0 2px 8px rgba(0,0,0,0.9);">${line}</text>`
+                               fill="white" style="text-shadow: 0 4px 12px rgba(0,0,0,0.8);">${line}</text>`
         ).join('\n')}
                 </g>
             </svg>
