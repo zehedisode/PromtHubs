@@ -22,17 +22,25 @@ async function generateCard(imageBuffer, options) {
         gradientIntensity = 100
     } = options;
 
+    console.log('Generating card with Sharp...', { themeColor, model, promptLength: promptText.length });
+
     const width = 1080;
     const height = 1920;
 
     try {
+        if (!imageBuffer || imageBuffer.length === 0) {
+            throw new Error('Image buffer is empty or undefined');
+        }
+
         // Resize and prepare background image
+        console.log('Step 1: Preparing background...');
         const background = await sharp(imageBuffer)
             .resize(width, height, { fit: 'cover', position: 'center' })
             .modulate({ brightness: 0.85 }) // Slightly darken for text visibility
             .toBuffer();
 
         // Create gradient overlay SVG
+        console.log('Step 2: Creating gradient overlay...');
         const gradientAlpha = Math.round((gradientIntensity / 100) * 255);
         const gradientOverlay = Buffer.from(`
             <svg width="${width}" height="${height}">
@@ -48,6 +56,7 @@ async function generateCard(imageBuffer, options) {
         `);
 
         // Create text overlay SVG
+        console.log('Step 3: Creating text overlay...');
         const escapedText = escapeXml(promptText);
         const borderColor = showBorder ? themeColor : 'transparent';
 
@@ -65,12 +74,12 @@ async function generateCard(imageBuffer, options) {
                 </text>
                 
                 <!-- Model badge -->
-                <rect x="60" y="${height - 400}" width="${model.length * 20 + 32}" height="40" 
+                <rect x="60" y="${height - 400}" width="${(model?.length || 0) * 20 + 32}" height="40" 
                       fill="${themeColor}" rx="8"/>
                 <text x="76" y="${height - 370}" 
                       font-family="Arial, sans-serif" font-size="22" font-weight="bold"
                       fill="black">
-                    ${model.toUpperCase()}
+                    ${(model || 'GEMINI').toUpperCase()}
                 </text>
                 
                 <!-- PROMPT label -->
@@ -86,6 +95,7 @@ async function generateCard(imageBuffer, options) {
         `);
 
         // Composite all layers
+        console.log('Step 4: Compositing layers...');
         const result = await sharp(background)
             .composite([
                 { input: gradientOverlay, blend: 'over' },
@@ -94,10 +104,11 @@ async function generateCard(imageBuffer, options) {
             .png({ quality: 100 })
             .toBuffer();
 
+        console.log('Card generation successful!');
         return result;
 
     } catch (err) {
-        console.error('Card generation error:', err);
+        console.error('Card generation failed at Sharp phase:', err);
         throw err;
     }
 }

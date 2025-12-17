@@ -353,11 +353,12 @@ async function generateAndSendCard(chatId, messageId) {
         resetSession(chatId);
 
     } catch (err) {
-        console.error('Card generation error:', err);
+        console.error('CRITICAL Card generation error:', err);
         try {
-            await bot.sendMessage(chatId, '❌ Kart oluşturulurken hata oluştu. /yeni ile tekrar deneyin.');
+            const errorMsg = `❌ Kart oluşturulurken hata oluştu: ${err.message || 'Bilinmeyen hata'}\n\n/yeni ile tekrar deneyin.`;
+            await bot.sendMessage(chatId, errorMsg);
         } catch (e) {
-            // Ignore
+            console.error('Failed to send error message:', e);
         }
         resetSession(chatId);
     }
