@@ -70,7 +70,10 @@ function createNewSession() {
             themeColor: '#FFD700',
             model: 'Gemini',
             fontFamily: 'mono',
+            fontSize: 36,
             showBorder: true,
+            safeZone: true,
+            safeZoneScale: 25,
             gradientIntensity: 100
         },
         lastActivity: Date.now()

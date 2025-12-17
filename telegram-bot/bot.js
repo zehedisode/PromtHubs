@@ -314,8 +314,11 @@ async function generateAndSendCard(chatId, messageId) {
             themeColor: session.settings.themeColor,
             model: session.settings.model,
             fontFamily: session.settings.fontFamily,
+            fontSize: session.settings.fontSize,
             showBorder: session.settings.showBorder,
-            gradientIntensity: 100
+            safeZone: session.settings.safeZone,
+            safeZoneScale: session.settings.safeZoneScale,
+            gradientIntensity: session.settings.gradientIntensity
         });
 
         // Save to temp file
