@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PromtHubs Card Creator v5.4 (Color Palette) ✨</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&family=Oswald:wght@500;700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap"
+        rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+
+<body>
+
+    <!-- Hidden Analysis Canvas (For Color Detection) -->
+    <canvas id="analysisCanvas" width="100" height="100" style="display:none;"></canvas>
+
+    <!-- Left Panel: Controls -->
+    <aside class="control-panel">
+        <div class="panel-header">
+            <div class="brand-logo">PROMT<span>HUBS</span></div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">v5.4</div>
+        </div>
+
+        <div class="panel-content">
+            <!-- Media & Content Section -->
+            <section class="accordion-section" data-section="media">
+                <button class="section-header active">
+                    <i class="fa-solid fa-image"></i>
+                    <span>Media & Content</span>
+                    <i class="fa-solid fa-chevron-down toggle-icon"></i>
+                </button>
+                <div class="section-content expanded">
+                    <!-- Image Upload -->
+                    <div class="form-group">
+                        <div class="upload-area" id="dropZone">
+                            <input type="file" id="imageInput" accept="image/*" multiple style="display:none;">
+                            <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                            <div class="upload-text">Görselleri sürükleyin veya seçin</div>
+                        </div>
+                        <div id="imageGallery" class="image-gallery"></div>
+                        <button id="btnRemix" class="btn-remix">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            Manuel Remix
+                        </button>
+                    </div>
+
+                    <!-- Prompt Input -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fa-solid fa-pencil"></i>
+                            Prompt Metni
+                        </label>
+                        <textarea id="promptInput" placeholder="Prompt buraya gelecek..."></textarea>
+                    </div>
+
+                    <!-- Model Selection -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fa-solid fa-brain"></i>
+                            AI Modeli
+                        </label>
+                        <div class="btn-group" id="modelGroup">
+                            <button class="btn-option active" data-value="Gemini">Gemini</button>
+                            <button class="btn-option" data-value="GPT-4">GPT-4</button>
+                            <button class="btn-option" data-value="None">Yok</button>
+                        </div>
+                        <!-- API Key Button -->
+                        <button id="btnApiKey" class="btn-option btn-api-key" style="margin-left:10px;">
+                            <i class="fa-solid fa-key"></i> API Key
+                        </button>
+                        <!-- API Key Modal -->
+                        <div id="apiKeyModal" class="api-key-modal">
+                            <div class="api-key-modal-backdrop"></div>
+                            <div class="api-key-modal-content">
+                                <div class="api-key-modal-header">
+                                    <div class="api-key-modal-icon">
+                                        <i class="fa-solid fa-key"></i>
+                                    </div>
+                                    <h3>Gemini API Key</h3>
+                                    <p>Remix özelliğini kullanmak için kendi Gemini API anahtarınızı girin.</p>
+                                </div>
+                                <div class="api-key-modal-body">
+                                    <div class="api-key-input-wrapper">
+                                        <i class="fa-solid fa-lock"></i>
+                                        <input type="password" id="apiKeyInput"
+                                            placeholder="API anahtarınızı buraya yapıştırın..." />
+                                        <button type="button" class="api-key-toggle-visibility" title="Göster/Gizle">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="api-key-help">
+                                        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">
+                                            <i class="fa-solid fa-external-link"></i> API Key nasıl alınır?
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="api-key-modal-footer">
+                                    <button id="apiKeyCancel" class="btn-modal btn-modal-cancel">
+                                        <i class="fa-solid fa-xmark"></i> İptal
+                                    </button>
+                                    <button id="apiKeySave" class="btn-modal btn-modal-save">
+                                        <i class="fa-solid fa-check"></i> Kaydet
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Style & Colors Section -->
+            <section class="accordion-section" data-section="style">
+                <button class="section-header active">
+                    <i class="fa-solid fa-palette"></i>
+                    <span>Style & Colors</span>
+                    <i class="fa-solid fa-chevron-down toggle-icon"></i>
+                </button>
+                <div class="section-content expanded">
+                    <!-- Color Palette -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fa-solid fa-droplet"></i>
+                            Renk Paleti
+                        </label>
+                        <div id="colorPalette" class="color-palette"></div>
+                    </div>
+
+                    <!-- Font Settings -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fa-solid fa-font"></i>
+                            Font Ailesi
+                        </label>
+                        <div class="btn-group" id="fontGroup">
+                            <button class="btn-option active" data-family="var(--font-mono)"
+                                style="font-family: var(--font-mono);">Mono</button>
+                            <button class="btn-option" data-family="var(--font-sans)"
+                                style="font-family: var(--font-sans);">Sans</button>
+                            <button class="btn-option" data-family="var(--font-serif)"
+                                style="font-family: var(--font-serif);">Serif</button>
+                        </div>
+                    </div>
+
+                    <!-- Font Size -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <span>Yazı Boyutu</span>
+                            <span id="fontSizeVal">15px</span>
+                        </label>
+                        <input type="range" id="fontSizeSlider" min="10" max="32" value="15">
+                    </div>
+
+                    <!-- Alignment -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fa-solid fa-align-center"></i>
+                            Hizalama
+                        </label>
+                        <div class="btn-group" id="alignGroup">
+                            <button class="btn-option active" data-align="left"><i
+                                    class="fa-solid fa-align-left"></i></button>
+                            <button class="btn-option" data-align="center"><i
+                                    class="fa-solid fa-align-center"></i></button>
+                            <button class="btn-option" data-align="right"><i
+                                    class="fa-solid fa-align-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Effects Section -->
+            <section class="accordion-section" data-section="effects">
+                <button class="section-header">
+                    <i class="fa-solid fa-wand-sparkles"></i>
+                    <span>Effects</span>
+                    <i class="fa-solid fa-chevron-down toggle-icon"></i>
+                </button>
+                <div class="section-content">
+                    <!-- Toggles -->
+                    <div class="toggle-group">
+                        <label class="toggle-item">
+                            <input type="checkbox" class="toggle-checkbox" id="checkBorder" checked>
+                            <span class="toggle-label">Çerçeve</span>
+                        </label>
+                        <label class="toggle-item">
+                            <input type="checkbox" class="toggle-checkbox" id="checkText" checked>
+                            <span class="toggle-label">Metin Göster</span>
+                        </label>
+                        <label class="toggle-item">
+                            <input type="checkbox" class="toggle-checkbox" id="checkBlur">
+                            <span class="toggle-label">Blur</span>
+                        </label>
+                        <label class="toggle-item">
+                            <input type="checkbox" class="toggle-checkbox" id="checkSafeZone" checked>
+                            <span class="toggle-label">Safe Zone</span>
+                        </label>
+                    </div>
+
+                    <!-- Gradient Slider (shown when border is on) -->
+                    <div class="form-group" id="gradControlGroup">
+                        <label class="form-label">
+                            <span>Gradyan Yoğunluğu</span>
+                            <span id="gradVal">100%</span>
+                        </label>
+                        <input type="range" id="gradSlider" min="0" max="100" value="100">
+                    </div>
+
+                    <!-- Safe Zone Sub-Controls -->
+                    <div id="safeZoneControls" class="sub-controls" style="display:none;">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span>Safe Zone Ölçek</span>
+                                <span id="szScaleVal">25%</span>
+                            </label>
+                            <input type="range" id="szScaleSlider" min="0" max="200" value="25">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Layout Section -->
+            <section class="accordion-section" data-section="layout">
+                <button class="section-header">
+                    <i class="fa-solid fa-ruler-combined"></i>
+                    <span>Layout</span>
+                    <i class="fa-solid fa-chevron-down toggle-icon"></i>
+                </button>
+                <div class="section-content">
+                    <!-- Text Position -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <span>Metin Konumu (Dikey)</span>
+                            <span id="posVal">25px</span>
+                        </label>
+                        <input type="range" id="posSlider" min="0" max="400" value="25">
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="panel-footer">
+            <button id="btnExport" class="btn-export">
+                <i class="fa-solid fa-download"></i>
+                PNG İndir
+            </button>
+        </div>
+    </aside>
+
+    <!-- Right Panel: Preview -->
+    <main class="preview-area">
+        <div class="preview-wrapper">
+            <div id="exportCanvas" class="export-canvas">
+                <!-- Layer 0: Blur Fill Background -->
+                <div id="canvasBlurFill" class="canvas-blur-fill"
+                    style="background-image: url('https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=1080&auto=format&fit=crop');">
+                </div>
+
+                <!-- Layer 1: Background Wrapper -->
+                <div id="canvasBgWrapper" class="canvas-bg-wrapper">
+                    <div id="canvasBg" class="canvas-bg"
+                        style="background-image: url('https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=1080&auto=format&fit=crop');">
+                    </div>
+                </div>
+
+                <!-- Layer 2: Gradient Overlay -->
+                <div id="canvasOverlay" class="canvas-overlay"></div>
+
+                <!-- Layer 3: Content -->
+                <div class="canvas-content">
+                    <div class="top-branding">
+                        PROMT<span>HUBS</span>
+                    </div>
+
+                    <div id="textContainer" class="text-container">
+                        <div id="modelBadge" class="model-badge">GEMINI</div>
+                        <div id="promptLabel" class="prompt-label">PROMPT</div>
+                        <div id="promptText" style="opacity: 1;">
+                            Yapay zeka, insan zekasını taklit eden ve sürekli öğrenen sistemlerin genel adıdır. Geleceği
+                            şekillendiren en büyük güçlerden biridir.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Layer 4: Border -->
+                <div id="mainBorder" class="main-border"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- JavaScript Modules -->
+    <script type="module" src="js/main.js"></script>
+
+</body>
+
+</html>

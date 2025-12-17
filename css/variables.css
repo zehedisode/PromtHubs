@@ -1,0 +1,52 @@
+/**
+ * CSS DESIGN SYSTEM - CUSTOM PROPERTIES
+ * PromtHubs Card Creator v5.4
+ */
+
+:root {
+    /* Brand Colors */
+    --brand-yellow: #FFD700;
+    --brand-black: #0a0a0a;
+    --brand-dark: #111111;
+    --brand-panel: #1A1A1A;
+    --brand-border: #333333;
+    --brand-bg: #050505;
+
+    /* Text Colors */
+    --text-main: #ffffff;
+    --text-muted: #888888;
+
+    /* Typography */
+    --font-sans: 'Inter', sans-serif;
+    --font-display: 'Oswald', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-serif: 'Playfair Display', serif;
+
+    /* Spacing */
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+
+    /* Border Radius */
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+
+    /* Z-Index Layers */
+    --z-blur-fill: 1;
+    --z-main-bg: 5;
+    --z-overlay: 10;
+    --z-content: 20;
+    --z-border: 30;
+
+    /* Safe Zone Dynamic Variables (Default 0, set by JS) */
+    --sz-top: 0px;
+    --sz-right: 0px;
+    --sz-bottom: 0px;
+    --sz-left: 0px;
+
+    /* Canvas Position Padding */
+    --pos-padding: 25px;
+
+    /* Theme Color (Dynamic, set by color picker) */
+    --theme-color: #FFD700;
+}
