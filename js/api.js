@@ -51,10 +51,11 @@ export async function generateImageWithAI(prompt) {
     // The previous code did replacement here. Let's keep it consistent.
     const enhancedPrompt = CONFIG.API_ENHANCE_PROMPT_TEMPLATE.replace('{prompt}', prompt);
 
+    const apiKey = localStorage.getItem('geminiApiKey') || '';
     const response = await fetch(`${CONFIG.BACKEND_URL}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: enhancedPrompt })
+        body: JSON.stringify({ prompt: enhancedPrompt, apiKey })
     });
 
     if (!response.ok) {

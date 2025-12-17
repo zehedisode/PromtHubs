@@ -426,6 +426,11 @@ async function handleExport() {
         // 2. Send to Telegram
         try {
             Logger.info('EVENTS', 'Sending to Telegram...');
+
+            // Timeout kontrolü (15 saniye)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
             const response = await fetch('http://localhost:3000/api/send-telegram', {
                 method: 'POST',
                 headers: {
@@ -434,8 +439,11 @@ async function handleExport() {
                 body: JSON.stringify({
                     imageBase64: dataUrl,
                     prompt: state.promptText
-                })
+                }),
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             const result = await response.json();
 
@@ -452,9 +460,10 @@ async function handleExport() {
         } catch (tgError) {
             console.error('Telegram Upload Error:', tgError);
             Logger.error('EVENTS', 'Telegram upload failed', tgError);
-            // Don't show error to user if it's just a config issue, or maybe show a warning
-            if (tgError.message.includes('Failed to fetch')) {
-                // Server might not be running or CORS
+
+            if (tgError.name === 'AbortError') {
+                Toast.error('Telegram gönderimi zaman aşımına uğradı');
+            } else if (tgError.message.includes('Failed to fetch')) {
                 Logger.warn('EVENTS', 'Backend likely not running');
             }
         }

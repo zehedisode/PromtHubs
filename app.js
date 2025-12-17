@@ -2,85 +2,52 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
+const path = require('path');
+const TelegramBot = require('node-telegram-bot-api');
 
+// --- APP CONFIG ---
 const app = express();
 const PORT = 3000;
 
-// Rate Limiting - Basit in-memory limiter
-const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 dakika
-const RATE_LIMIT_MAX_REQUESTS = 20; // Dakikada maksimum 20 istek
-
-function rateLimiter(req, res, next) {
-    const ip = req.ip || req.connection.remoteAddress;
-    const now = Date.now();
-
-    if (!rateLimitMap.has(ip)) {
-        rateLimitMap.set(ip, { count: 1, startTime: now });
-        return next();
-    }
-
-    const record = rateLimitMap.get(ip);
-
-    if (now - record.startTime > RATE_LIMIT_WINDOW_MS) {
-        // Pencere süresi doldu, sıfırla
-        rateLimitMap.set(ip, { count: 1, startTime: now });
-        return next();
-    }
-
-    if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
-        return res.status(429).json({
-            error: 'Too many requests. Please try again later.',
-            retryAfter: Math.ceil((RATE_LIMIT_WINDOW_MS - (now - record.startTime)) / 1000)
-        });
-    }
-
-    record.count++;
-    next();
-}
-
 // Middleware
-app.use(cors());
-app.use(express.json({ limit: '50mb' })); // Allow large image payloads
-app.use('/api', rateLimiter); // Rate limit API endpoints
+app.use(cors({
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    credentials: true
+}));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.static('.', {
+    maxAge: '1d',
+    etag: true
+}));
 
-// Configuration
+// AI Configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_VISION_MODEL = 'gemini-2.5-flash-preview-09-2025';
 const IMAGEN_MODEL = 'imagen-4.0-generate-001';
-
-// Constants
 const API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 if (!GEMINI_API_KEY) {
     console.warn('⚠️ WARNING: GEMINI_API_KEY is not set in .env file!');
 }
 
+// --- API ENDPOINTS ---
+
 /**
- * Endpoint: /api/analyze
- * Desc: Analyze image using Gemini Vision
+ * /api/analyze - Analyze image using Gemini Vision
  */
 app.post('/api/analyze', async (req, res) => {
     try {
         const { imageBase64, prompt, apiKey } = req.body;
-
         const effectiveKey = apiKey || GEMINI_API_KEY;
-        if (!effectiveKey) {
-            return res.status(400).json({ error: 'API key is required' });
-        }
+
+        if (!effectiveKey) return res.status(400).json({ error: 'API key is required' });
 
         const url = `${API_BASE_URL}/${GEMINI_VISION_MODEL}:generateContent?key=${effectiveKey}`;
-
         const payload = {
             contents: [{
                 parts: [
                     { text: prompt || 'Describe this image.' },
-                    {
-                        inlineData: {
-                            mimeType: "image/jpeg",
-                            data: imageBase64
-                        }
-                    }
+                    { inlineData: { mimeType: "image/jpeg", data: imageBase64 } }
                 ]
             }]
         };
@@ -93,45 +60,36 @@ app.post('/api/analyze', async (req, res) => {
 
         if (!response.ok) {
             const errorText = await response.text();
+            if (response.status === 429) {
+                return res.status(429).json({ error: 'API rate limit aşıldı. Lütfen biraz bekleyin.' });
+            }
             throw new Error(`Gemini API Error: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
         const description = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!description) {
-            throw new Error('No description returned from API');
-        }
-
         res.json({ description });
 
     } catch (error) {
         console.error('❌ /api/analyze error:', error.message);
-        res.status(500).json({ error: error.message });
+        res.status(error.status || 500).json({ error: error.message });
     }
 });
 
 /**
- * Endpoint: /api/generate
- * Desc: Generate image using Imagen
+ * /api/generate - Generate image using Imagen
  */
 app.post('/api/generate', async (req, res) => {
     try {
         const { prompt, apiKey } = req.body;
-
         const effectiveKey = apiKey || GEMINI_API_KEY;
-        if (!effectiveKey) {
-            return res.status(400).json({ error: 'API key is required' });
-        }
+
+        if (!effectiveKey) return res.status(400).json({ error: 'API key is required' });
 
         const url = `${API_BASE_URL}/${IMAGEN_MODEL}:predict?key=${effectiveKey}`;
-
         const payload = {
             instances: [{ prompt }],
-            parameters: {
-                sampleCount: 1,
-                aspectRatio: "9:16"
-            }
+            parameters: { sampleCount: 1, aspectRatio: "9:16" }
         };
 
         const response = await fetch(url, {
@@ -142,52 +100,50 @@ app.post('/api/generate', async (req, res) => {
 
         if (!response.ok) {
             const errorText = await response.text();
+            if (response.status === 429) {
+                return res.status(429).json({ error: 'API rate limit aşıldı. Lütfen biraz bekleyin.' });
+            }
             throw new Error(`Imagen API Error: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
         const b64Result = data.predictions?.[0]?.bytesBase64Encoded;
 
-        if (!b64Result) {
-            throw new Error('No image data returned from API');
-        }
+        if (!b64Result) throw new Error('No image data returned from API');
 
         res.json({ imageBase64: b64Result });
 
     } catch (error) {
         console.error('❌ /api/generate error:', error.message);
-        res.status(500).json({ error: error.message });
+        res.status(error.status || 500).json({ error: error.message });
     }
 });
 
 /**
- * Endpoint: /api/send-telegram
- * Desc: Send generated card to Telegram Channel
+ * /api/send-telegram - Send to Channel
  */
-const TelegramBot = require('node-telegram-bot-api');
-const telegramBot = process.env.TELEGRAM_BOT_TOKEN ? new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false }) : null;
+const telegramSender = process.env.TELEGRAM_BOT_TOKEN
+    ? new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false })
+    : null;
 
 app.post('/api/send-telegram', async (req, res) => {
     try {
         const { imageBase64, prompt } = req.body;
         const channelId = process.env.TELEGRAM_CHANNEL_ID;
 
-        if (!telegramBot) {
-            return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN not configured.' });
-        }
+        if (!telegramSender) return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN not configured.' });
+        if (!channelId) return res.status(400).json({ error: 'TELEGRAM_CHANNEL_ID not configured in .env' });
 
-        if (!channelId) {
-            return res.status(400).json({ error: 'TELEGRAM_CHANNEL_ID not configured in .env' });
-        }
-
-        // Remove header if present
         const base64Data = imageBase64.replace(/^data:image\/png;base64,/, "");
         const buffer = Buffer.from(base64Data, 'base64');
 
-        // Send to Telegram
-        await telegramBot.sendPhoto(channelId, buffer, {
+        // Send to Telegram as Document (Lossless)
+        await telegramSender.sendDocument(channelId, buffer, {
             caption: `🎨 *Yeni Kart Oluşturuldu*\n\n📝 _${prompt ? prompt.substring(0, 100) + (prompt.length > 100 ? '...' : '') : 'No prompt'}_`,
             parse_mode: 'Markdown'
+        }, {
+            filename: 'promthubs-card.png',
+            contentType: 'image/png'
         });
 
         res.json({ success: true, message: 'Sent to Telegram' });
@@ -198,8 +154,18 @@ app.post('/api/send-telegram', async (req, res) => {
     }
 });
 
-// Start Server
+// --- START SERVER ---
 app.listen(PORT, () => {
-    console.log(`✅ Backend Proxy running at http://localhost:${PORT}`);
-    if (!GEMINI_API_KEY) console.log('PLEASE SET GEMINI_API_KEY in .env file');
+    console.log(`\n🚀 SİSTEM HAZIR!`);
+    console.log(`Web Sitesi: http://localhost:${PORT}`);
+    console.log(`Telegram Bot: Aktif (Polling)\n`);
 });
+
+// --- START INTERACTIVE BOT (Polling) ---
+try {
+    // Requires the bot logic from the subdirectory
+    // This script (bot.js) starts its own TelegramBot instance with polling:true
+    require('./telegram-bot/bot.js');
+} catch (e) {
+    console.error('❌ Could not start interactive bot:', e);
+}

@@ -176,6 +176,4 @@ function escapeXml(text) {
     }[c]));
 }
 
-async function closeBrowser() { }
-
-module.exports = { generateCard, closeBrowser };
+module.exports = { generateCard };
