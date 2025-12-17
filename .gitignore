@@ -13,3 +13,5 @@ dist/
 # Telegram bot
 telegram-bot/.env
 telegram-bot/temp/
+logs/
+src/bot/temp/

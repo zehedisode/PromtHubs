@@ -6,13 +6,15 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const config = require('../../../config');
+const logger = require('../utils/logger');
+const { validate, analyzeSchema, generateSchema } = require('../middleware/validation');
 
 const router = express.Router();
 
 /**
  * POST /api/analyze - Görsel analizi (Gemini Vision)
  */
-router.post('/analyze', async (req, res, next) => {
+router.post('/analyze', validate(analyzeSchema), async (req, res, next) => {
     try {
         const { imageBase64, prompt, apiKey } = req.body;
         const effectiveKey = apiKey || config.gemini.apiKey;
@@ -20,6 +22,8 @@ router.post('/analyze', async (req, res, next) => {
         if (!effectiveKey) {
             return res.status(400).json({ error: 'API key is required' });
         }
+
+        logger.info('Analyzing image via Gemini Vision');
 
         const url = `${config.gemini.baseUrl}/${config.gemini.visionModel}:generateContent?key=${effectiveKey}`;
         const payload = {
@@ -57,7 +61,7 @@ router.post('/analyze', async (req, res, next) => {
 /**
  * POST /api/generate - Görsel oluşturma (Imagen)
  */
-router.post('/generate', async (req, res, next) => {
+router.post('/generate', validate(generateSchema), async (req, res, next) => {
     try {
         const { prompt, apiKey } = req.body;
         const effectiveKey = apiKey || config.gemini.apiKey;
@@ -65,6 +69,8 @@ router.post('/generate', async (req, res, next) => {
         if (!effectiveKey) {
             return res.status(400).json({ error: 'API key is required' });
         }
+
+        logger.info('Generating image via Imagen', { promptLength: prompt.length });
 
         const url = `${config.gemini.baseUrl}/${config.gemini.imagenModel}:predict?key=${effectiveKey}`;
         const payload = {
