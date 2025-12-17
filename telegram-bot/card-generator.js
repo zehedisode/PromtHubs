@@ -19,7 +19,21 @@ async function getBrowser() {
     if (!browserInstance) {
         browserInstance = await puppeteer.launch({
             headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--disable-gpu',
+                '--disable-extensions',
+                '--disable-software-rasterizer',
+                '--disable-features=site-per-process',
+                '--js-flags=--max-old-space-size=512'
+            ],
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
         });
     }
     return browserInstance;
