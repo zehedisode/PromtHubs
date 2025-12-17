@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+coverage
+tests
+*.md
+.eslintrc.json
+.prettierrc
+jest.config.js
+playwright.config.js
+playwright-report
+test-results
