@@ -14,7 +14,7 @@ import {
     restoreButton
 } from './ui.js';
 import { updateCanvasBackgrounds, captureCanvas } from './canvas-manager.js';
-import { handleFileUpload, downloadDataUrl } from './utils.js';
+import { handleFileUpload } from './utils.js';
 import { remixImageWithAI } from './api.js';
 import { Logger } from './logger.js';
 import { Toast } from './toast.js';
@@ -470,23 +470,18 @@ function handleImageRemoved(id) {
  * @returns {Promise<void>}
  */
 async function handleExport() {
-    Logger.info('EVENTS', 'Export started');
+    Logger.info('EVENTS', 'Telegram export started');
     const originalText = setButtonLoading(
         DOM.btnExport,
         true,
-        '<div class="spinner"></div> İşleniyor...'
+        '<div class="spinner"></div> Gönderiliyor...'
     );
 
     try {
-        // 1. Capture edited card
+        // 1. Capture edited card (full quality PNG)
         const dataUrl = await captureCanvas(state);
 
-        // 2. Download edited card locally
-        const filename = `promthubs-styled-card-${Date.now()}.png`;
-        downloadDataUrl(dataUrl, filename);
-        Toast.success('Kart indirildi!');
-
-        // 3. Send edited card to Telegram
+        // 2. Send edited card to Telegram
         try {
             Logger.info('EVENTS', 'Sending edited card to Telegram...');
 
@@ -518,54 +513,54 @@ async function handleExport() {
                     throw new Error(result.error || `Server Error: ${response.status}`);
                 }
             } else {
-                Toast.success('Editli kart Telegram\'a gönderildi! 🎨');
-            }
+                Toast.success('Kart Telegram\'a gönderildi! 🎨');
 
-            // 4. Send all original photos to Telegram (excluding default)
-            const originalImages = imageGallery.images.filter(img => img.id !== 'default');
+                // 3. Send all original photos to Telegram (excluding default)
+                const originalImages = imageGallery.images.filter(img => img.id !== 'default');
 
-            if (originalImages.length > 0) {
-                Logger.info('EVENTS', `Sending ${originalImages.length} original photos to Telegram...`);
+                if (originalImages.length > 0) {
+                    Logger.info('EVENTS', `Sending ${originalImages.length} original photos to Telegram...`);
 
-                for (let i = 0; i < originalImages.length; i++) {
-                    const img = originalImages[i];
+                    for (let i = 0; i < originalImages.length; i++) {
+                        const img = originalImages[i];
+                        try {
+                            const originalResponse = await fetch('/api/send-telegram', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    imageBase64: img.src,
+                                    prompt: `📷 Orijinal Fotoğraf ${i + 1}/${originalImages.length}`,
+                                    type: 'original'
+                                })
+                            });
+
+                            if (originalResponse.ok) {
+                                Logger.info('EVENTS', `Original photo ${i + 1} sent`);
+                            }
+                        } catch (origErr) {
+                            Logger.error('EVENTS', `Failed to send original photo ${i + 1}`, origErr);
+                        }
+                    }
+
+                    Toast.success(`${originalImages.length} orijinal fotoğraf da gönderildi! 📷`);
+                }
+
+                // 4. Send prompt as the final message (after all images)
+                if (state.promptText && state.promptText.trim()) {
                     try {
-                        const originalResponse = await fetch('/api/send-telegram', {
+                        Logger.info('EVENTS', 'Sending prompt as final message...');
+                        await fetch('/api/send-telegram', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                imageBase64: img.src,
-                                prompt: `📷 Orijinal Fotoğraf ${i + 1}/${originalImages.length}`,
-                                type: 'original'
+                                prompt: state.promptText,
+                                type: 'sendPrompt'
                             })
                         });
-
-                        if (originalResponse.ok) {
-                            Logger.info('EVENTS', `Original photo ${i + 1} sent`);
-                        }
-                    } catch (origErr) {
-                        Logger.error('EVENTS', `Failed to send original photo ${i + 1}`, origErr);
+                        Logger.info('EVENTS', 'Prompt sent as final message');
+                    } catch (promptErr) {
+                        Logger.error('EVENTS', 'Failed to send prompt message', promptErr);
                     }
-                }
-
-                Toast.success(`${originalImages.length} orijinal fotoğraf da gönderildi! 📷`);
-            }
-
-            // 5. Send prompt as the final message (after all images)
-            if (state.promptText && state.promptText.trim()) {
-                try {
-                    Logger.info('EVENTS', 'Sending prompt as final message...');
-                    await fetch('/api/send-telegram', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            prompt: state.promptText,
-                            type: 'sendPrompt'
-                        })
-                    });
-                    Logger.info('EVENTS', 'Prompt sent as final message');
-                } catch (promptErr) {
-                    Logger.error('EVENTS', 'Failed to send prompt message', promptErr);
                 }
             }
 
@@ -583,7 +578,7 @@ async function handleExport() {
             }
         }
 
-        Logger.info('EVENTS', 'Export successful', { filename });
+        Logger.info('EVENTS', 'Telegram export completed');
 
     } catch (err) {
         Logger.error('EVENTS', 'Export Failed', { box: err.message });
