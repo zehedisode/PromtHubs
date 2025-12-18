@@ -60,5 +60,6 @@ export const DEFAULT_STATE = {
     blurBackground: false,
     safeZone: true,
     safeZoneScale: 25,
-    themeColor: '#FFD700'
+    themeColor: '#FFD700',
+    showOriginalOnly: false
 };

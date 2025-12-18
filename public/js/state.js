@@ -36,6 +36,7 @@ export function loadState() {
             // Ensure new properties exist (for version migration)
             if (state.safeZoneScale === undefined) state.safeZoneScale = DEFAULT_STATE.safeZoneScale;
             if (state.gradientIntensity === undefined) state.gradientIntensity = DEFAULT_STATE.gradientIntensity;
+            if (state.showOriginalOnly === undefined) state.showOriginalOnly = DEFAULT_STATE.showOriginalOnly;
         } catch (e) {
             Logger.error('STATE', 'Failed to load state', { error: e });
             state = { ...DEFAULT_STATE };

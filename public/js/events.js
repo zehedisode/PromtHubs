@@ -58,6 +58,9 @@ export function bindEvents() {
     DOM.checkText.addEventListener('change', handleTextToggle);
     DOM.checkBlur.addEventListener('change', handleBlurToggle);
     DOM.checkSafeZone.addEventListener('change', handleSafeZoneToggle);
+    if (DOM.checkOriginalOnly) {
+        DOM.checkOriginalOnly.addEventListener('change', handleOriginalOnlyToggle);
+    }
 
     // Image Upload - Click
     DOM.dropZone.addEventListener('click', () => {
@@ -273,6 +276,15 @@ function handleBlurToggle(e) {
  */
 function handleSafeZoneToggle(e) {
     updateState('safeZone', e.target.checked);
+    updateUI();
+}
+
+/**
+ * Handle original only toggle
+ * @param {Event} e 
+ */
+function handleOriginalOnlyToggle(e) {
+    updateState('showOriginalOnly', e.target.checked);
     updateUI();
 }
 

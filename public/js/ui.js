@@ -44,6 +44,7 @@ export const DOM = {
     checkText: null,
     checkBlur: null,
     checkSafeZone: null,
+    checkOriginalOnly: null,
 
     // Buttons
     btnExport: null,
@@ -102,6 +103,7 @@ export function initDOM() {
     DOM.checkText = document.getElementById('checkText');
     DOM.checkBlur = document.getElementById('checkBlur');
     DOM.checkSafeZone = document.getElementById('checkSafeZone');
+    DOM.checkOriginalOnly = document.getElementById('checkOriginalOnly');
 
     // Buttons
     DOM.btnExport = document.getElementById('btnExport');
@@ -218,6 +220,22 @@ function updateGradientAndBorder(state) {
  * @param {Object} state - current application state
  */
 function updateVisibility(state) {
+    // Original Only mode - hide all overlays
+    if (state.showOriginalOnly) {
+        DOM.mainBorder.style.opacity = '0';
+        DOM.textContainer.style.opacity = '0';
+        DOM.canvasOverlay.style.opacity = '0';
+        DOM.canvasBlurFill.style.opacity = '0';
+        DOM.topBranding.style.opacity = '0';
+        DOM.exportCanvas.classList.remove('blur-active');
+        DOM.exportCanvas.classList.remove('safe-zone-active');
+        return;
+    }
+
+    // Normal mode
+    DOM.canvasOverlay.style.opacity = state.gradientIntensity / 100;
+    DOM.canvasBlurFill.style.opacity = '';
+    DOM.topBranding.style.opacity = '1';
     DOM.mainBorder.style.opacity = state.showBorder ? '1' : '0';
     DOM.textContainer.style.opacity = state.showText ? '1' : '0';
 
@@ -261,6 +279,7 @@ function updateInputs(state) {
     DOM.checkText.checked = state.showText;
     DOM.checkBlur.checked = state.blurBackground;
     DOM.checkSafeZone.checked = state.safeZone;
+    if (DOM.checkOriginalOnly) DOM.checkOriginalOnly.checked = state.showOriginalOnly;
 }
 
 /**
