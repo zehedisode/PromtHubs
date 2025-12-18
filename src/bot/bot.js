@@ -92,7 +92,6 @@ bot.onText(/\/yeni/, (msg) => {
 
 bot.on('photo', async (msg) => {
     const chatId = msg.chat.id;
-    const _session = getSession(chatId);
 
     try {
         // Get largest photo
