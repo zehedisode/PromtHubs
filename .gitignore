@@ -15,3 +15,4 @@ telegram-bot/.env
 telegram-bot/temp/
 logs/
 src/bot/temp/
+src/bot/sessions/

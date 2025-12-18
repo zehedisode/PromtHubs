@@ -137,8 +137,18 @@ bot.on('text', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
 
+    // Check for forwarded channel messages
+    if (msg.forward_from_chat && msg.forward_from_chat.type === 'channel') {
+        console.log('📢 CHANNEL DETECTED (Forwarded):', {
+            id: msg.forward_from_chat.id,
+            title: msg.forward_from_chat.title
+        });
+        bot.sendMessage(chatId, `✅ Kanal Algılandı: ${msg.forward_from_chat.title} (ID: ${msg.forward_from_chat.id})`);
+        return;
+    }
+
     // Ignore commands
-    if (text.startsWith('/')) return;
+    if (text && text.startsWith('/')) return;
 
     const session = getSession(chatId);
 
@@ -387,6 +397,15 @@ function downloadFile(url) {
 // Error handling
 bot.on('polling_error', (error) => {
     console.error('Polling error:', error.message);
+});
+
+// Helper to find channel ID
+bot.on('channel_post', (msg) => {
+    console.log('📢 CHANNEL DETECTED:', {
+        id: msg.chat.id,
+        title: msg.chat.title,
+        type: msg.chat.type
+    });
 });
 
 console.log('✅ Bot hazır ve dinliyor...');
