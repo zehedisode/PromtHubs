@@ -500,13 +500,22 @@ async function handleExport() {
                 })
             });
 
-            const result = await response.json();
+            // Safe JSON parsing - handle empty or invalid responses
+            let result = {};
+            try {
+                const text = await response.text();
+                if (text) {
+                    result = JSON.parse(text);
+                }
+            } catch (parseErr) {
+                Logger.warn('EVENTS', 'Failed to parse response JSON', parseErr);
+            }
 
             if (!response.ok) {
                 if (result.error && result.error.includes('TELEGRAM_CHANNEL_ID')) {
                     Toast.error('Telegram Hatası: Kanal ID eksik (.env)');
                 } else {
-                    throw new Error(result.error || 'Server Error');
+                    throw new Error(result.error || `Server Error: ${response.status}`);
                 }
             } else {
                 Toast.success('Editli kart Telegram\'a gönderildi! 🎨');
