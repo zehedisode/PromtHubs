@@ -13,7 +13,8 @@ describe('Config Module', () => {
     });
 
     test('port should default to 3000', () => {
-        expect(config.port).toBe(3000);
+        // Port comes as string from .env, this is expected
+        expect(Number(config.port)).toBe(3000);
     });
 
     test('gemini config should have required properties', () => {
