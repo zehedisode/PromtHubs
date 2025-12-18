@@ -220,7 +220,7 @@ function updateGradientAndBorder(state) {
  * @param {Object} state - current application state
  */
 function updateVisibility(state) {
-    // Original Only mode - hide all overlays
+    // Original Only mode - hide all overlays and show photo fullscreen
     if (state.showOriginalOnly) {
         DOM.mainBorder.style.opacity = '0';
         DOM.textContainer.style.opacity = '0';
@@ -229,10 +229,24 @@ function updateVisibility(state) {
         DOM.topBranding.style.opacity = '0';
         DOM.exportCanvas.classList.remove('blur-active');
         DOM.exportCanvas.classList.remove('safe-zone-active');
+        // Reset safe zone variables to make photo fill entire canvas
+        DOM.exportCanvas.style.setProperty('--sz-top', '0px');
+        DOM.exportCanvas.style.setProperty('--sz-right', '0px');
+        DOM.exportCanvas.style.setProperty('--sz-bottom', '0px');
+        DOM.exportCanvas.style.setProperty('--sz-left', '0px');
         return;
     }
 
-    // Normal mode
+    // Normal mode - restore safe zone if active
+    if (state.safeZone) {
+        const scale = state.safeZoneScale / 100;
+        const size = CONFIG.SAFE_ZONE_BASE * scale;
+        DOM.exportCanvas.style.setProperty('--sz-top', `${size}px`);
+        DOM.exportCanvas.style.setProperty('--sz-right', `${size}px`);
+        DOM.exportCanvas.style.setProperty('--sz-bottom', `${size}px`);
+        DOM.exportCanvas.style.setProperty('--sz-left', `${size}px`);
+    }
+
     DOM.canvasOverlay.style.opacity = state.gradientIntensity / 100;
     DOM.canvasBlurFill.style.display = '';
     DOM.topBranding.style.opacity = '1';
