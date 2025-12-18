@@ -225,7 +225,7 @@ function updateVisibility(state) {
         DOM.mainBorder.style.opacity = '0';
         DOM.textContainer.style.opacity = '0';
         DOM.canvasOverlay.style.opacity = '0';
-        DOM.canvasBlurFill.style.opacity = '0';
+        DOM.canvasBlurFill.style.display = 'none';
         DOM.topBranding.style.opacity = '0';
         DOM.exportCanvas.classList.remove('blur-active');
         DOM.exportCanvas.classList.remove('safe-zone-active');
@@ -234,7 +234,7 @@ function updateVisibility(state) {
 
     // Normal mode
     DOM.canvasOverlay.style.opacity = state.gradientIntensity / 100;
-    DOM.canvasBlurFill.style.opacity = '';
+    DOM.canvasBlurFill.style.display = '';
     DOM.topBranding.style.opacity = '1';
     DOM.mainBorder.style.opacity = state.showBorder ? '1' : '0';
     DOM.textContainer.style.opacity = state.showText ? '1' : '0';
