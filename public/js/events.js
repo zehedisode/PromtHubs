@@ -478,34 +478,27 @@ async function handleExport() {
     );
 
     try {
+        // 1. Capture edited card
         const dataUrl = await captureCanvas(state);
 
-        // 1. Download Local
+        // 2. Download edited card locally
         const filename = `promthubs-styled-card-${Date.now()}.png`;
         downloadDataUrl(dataUrl, filename);
         Toast.success('Kart indirildi!');
 
-        // 2. Send to Telegram
+        // 3. Send edited card to Telegram
         try {
-            Logger.info('EVENTS', 'Sending to Telegram...');
+            Logger.info('EVENTS', 'Sending edited card to Telegram...');
 
-            // Timeout kontrolü (15 saniye)
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-            const response = await fetch('http://localhost:3000/api/send-telegram', {
+            const response = await fetch('/api/send-telegram', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     imageBase64: dataUrl,
-                    prompt: state.promptText
-                }),
-                signal: controller.signal
+                    prompt: state.promptText,
+                    type: 'edited'
+                })
             });
-
-            clearTimeout(timeoutId);
 
             const result = await response.json();
 
@@ -516,7 +509,37 @@ async function handleExport() {
                     throw new Error(result.error || 'Server Error');
                 }
             } else {
-                Toast.success('Telegram kanalına gönderildi! 🚀');
+                Toast.success('Editli kart Telegram\'a gönderildi! 🎨');
+            }
+
+            // 4. Send all original photos to Telegram (excluding default)
+            const originalImages = imageGallery.images.filter(img => img.id !== 'default');
+
+            if (originalImages.length > 0) {
+                Logger.info('EVENTS', `Sending ${originalImages.length} original photos to Telegram...`);
+
+                for (let i = 0; i < originalImages.length; i++) {
+                    const img = originalImages[i];
+                    try {
+                        const originalResponse = await fetch('/api/send-telegram', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                imageBase64: img.src,
+                                prompt: `📷 Orijinal Fotoğraf ${i + 1}/${originalImages.length}`,
+                                type: 'original'
+                            })
+                        });
+
+                        if (originalResponse.ok) {
+                            Logger.info('EVENTS', `Original photo ${i + 1} sent`);
+                        }
+                    } catch (origErr) {
+                        Logger.error('EVENTS', `Failed to send original photo ${i + 1}`, origErr);
+                    }
+                }
+
+                Toast.success(`${originalImages.length} orijinal fotoğraf da gönderildi! 📷`);
             }
 
         } catch (tgError) {
@@ -525,8 +548,11 @@ async function handleExport() {
 
             if (tgError.name === 'AbortError') {
                 Toast.error('Telegram gönderimi zaman aşımına uğradı');
-            } else if (tgError.message.includes('Failed to fetch')) {
+            } else if (tgError.message && tgError.message.includes('Failed to fetch')) {
+                Toast.error('Backend sunucusu çalışmıyor olabilir');
                 Logger.warn('EVENTS', 'Backend likely not running');
+            } else {
+                Toast.error('Telegram hatası: ' + (tgError.message || 'Bilinmeyen hata'));
             }
         }
 
