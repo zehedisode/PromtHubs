@@ -68,10 +68,15 @@ export function bindEvents() {
         DOM.imageInput.click();
     });
 
-    // Image Upload - Drag & Drop
+    // Image Upload - Drag & Drop (Local dropzone)
     DOM.dropZone.addEventListener('dragover', handleDragOver);
     DOM.dropZone.addEventListener('dragleave', handleDragLeave);
     DOM.dropZone.addEventListener('drop', handleDrop);
+
+    // Global Drag & Drop - Entire page
+    document.addEventListener('dragover', handleGlobalDragOver);
+    document.addEventListener('dragleave', handleGlobalDragLeave);
+    document.addEventListener('drop', handleGlobalDrop);
 
     DOM.imageInput.addEventListener('change', handleImageInputChange);
 
@@ -312,9 +317,54 @@ function handleDragLeave(e) {
  */
 function handleDrop(e) {
     e.preventDefault();
+    e.stopPropagation();
     DOM.dropZone.style.borderColor = "var(--brand-border)";
+    document.body.classList.remove('global-drag-active');
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         handleImageFiles(e.dataTransfer.files);
+    }
+}
+
+/**
+ * Handle global drag over event (entire page)
+ * @param {Event} e 
+ */
+function handleGlobalDragOver(e) {
+    e.preventDefault();
+    // Only show visual feedback for file drags
+    if (e.dataTransfer.types.includes('Files')) {
+        document.body.classList.add('global-drag-active');
+    }
+}
+
+/**
+ * Handle global drag leave event
+ * @param {Event} e 
+ */
+function handleGlobalDragLeave(e) {
+    e.preventDefault();
+    // Only remove class if leaving the document entirely
+    if (e.target === document.documentElement || !e.relatedTarget) {
+        document.body.classList.remove('global-drag-active');
+    }
+}
+
+/**
+ * Handle global file drop event
+ * @param {Event} e 
+ */
+function handleGlobalDrop(e) {
+    e.preventDefault();
+    document.body.classList.remove('global-drag-active');
+
+    // Only process image files
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const imageFiles = Array.from(e.dataTransfer.files).filter(
+            file => file.type.startsWith('image/')
+        );
+        if (imageFiles.length > 0) {
+            handleImageFiles(imageFiles);
+        }
     }
 }
 
