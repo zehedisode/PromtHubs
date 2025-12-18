@@ -551,6 +551,24 @@ async function handleExport() {
                 Toast.success(`${originalImages.length} orijinal fotoğraf da gönderildi! 📷`);
             }
 
+            // 5. Send prompt as the final message (after all images)
+            if (state.promptText && state.promptText.trim()) {
+                try {
+                    Logger.info('EVENTS', 'Sending prompt as final message...');
+                    await fetch('/api/send-telegram', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: state.promptText,
+                            type: 'sendPrompt'
+                        })
+                    });
+                    Logger.info('EVENTS', 'Prompt sent as final message');
+                } catch (promptErr) {
+                    Logger.error('EVENTS', 'Failed to send prompt message', promptErr);
+                }
+            }
+
         } catch (tgError) {
             console.error('Telegram Upload Error:', tgError);
             Logger.error('EVENTS', 'Telegram upload failed', tgError);

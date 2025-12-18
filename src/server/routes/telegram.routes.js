@@ -19,7 +19,7 @@ const telegramSender = config.telegram.botToken
  */
 router.post('/send-telegram', async (req, res, next) => {
     try {
-        const { imageBase64, prompt } = req.body;
+        const { imageBase64, prompt, type } = req.body;
         const channelId = config.telegram.channelId;
 
         if (!telegramSender) {
@@ -30,15 +30,29 @@ router.post('/send-telegram', async (req, res, next) => {
             return res.status(400).json({ error: 'TELEGRAM_CHANNEL_ID not configured in .env' });
         }
 
+        // Sadece prompt gönderimi (resim olmadan)
+        if (type === 'sendPrompt') {
+            if (prompt && prompt.trim()) {
+                await telegramSender.sendMessage(channelId, prompt.trim());
+            }
+            return res.json({ success: true, message: 'Prompt sent to Telegram' });
+        }
+
+        // Resim gönderimi
         const base64Data = imageBase64.replace(/^data:image\/png;base64,/, '');
         const buffer = Buffer.from(base64Data, 'base64');
 
+        // Editli kart mı orijinal mi?
+        const isEdited = type === 'edited';
+        const caption = isEdited ? '🎨 *Yeni Kart Oluşturuldu*' : (prompt || '📷 Orijinal Fotoğraf');
+        const filename = isEdited ? 'promthubs-card.png' : `original-photo-${Date.now()}.png`;
+
         // Telegram'a Document olarak gönder (kayıpsız)
         await telegramSender.sendDocument(channelId, buffer, {
-            caption: `🎨 *Yeni Kart Oluşturuldu*\n\n📝 _${prompt ? prompt.substring(0, 100) + (prompt.length > 100 ? '...' : '') : 'No prompt'}_`,
+            caption: caption,
             parse_mode: 'Markdown'
         }, {
-            filename: 'promthubs-card.png',
+            filename: filename,
             contentType: 'image/png'
         });
 
