@@ -84,6 +84,12 @@ export function updateState(key, value) {
  * @returns {Object} The added image object
  */
 export function addImageToGallery(src) {
+    // Remove default image when first user image is added
+    const defaultIndex = imageGallery.images.findIndex(img => img.id === 'default');
+    if (defaultIndex > -1) {
+        imageGallery.images.splice(defaultIndex, 1);
+    }
+
     const newImage = {
         id: 'img-' + Date.now() + Math.random().toString(36).substr(2, 9),
         src: src
