@@ -1,0 +1,17 @@
+ORACLE CLOUD VDS BİLGİLERİ
+--------------------------
+Oluşturulma Tarihi: 18.12.2025
+Durum: Çalışıyor (Running)
+
+IP Adresi: 79.72.47.23
+Kullanıcı Adı: ubuntu
+İşletim Sistemi: Ubuntu 20.04
+SSH Anahtar Yolu: /home/soner/Masaüstü/ssh-key-2025-12-18.key
+
+BAĞLANTI KOMUTU:
+ssh -i /home/soner/Masaüstü/ssh-key-2025-12-18.key ubuntu@79.72.47.23
+
+WEB SİTESİ ADRESİ (Nginx kurulduktan sonra):
+http://79.72.47.23
+
+NOT: Masaüstündeki 'VDS_Baglan.sh' dosyasına terminalden './VDS_Baglan.sh' yazarak veya dosyayı çalıştırarak otomatik bağlanabilirsiniz.
