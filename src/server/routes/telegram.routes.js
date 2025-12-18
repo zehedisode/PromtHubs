@@ -39,8 +39,14 @@ router.post('/send-telegram', async (req, res, next) => {
         }
 
         // Resim gönderimi
-        const base64Data = imageBase64.replace(/^data:image\/png;base64,/, '');
+        // Tüm resim formatlarını destekle (png, jpeg, webp, gif vb.)
+        const base64Data = imageBase64.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
         const buffer = Buffer.from(base64Data, 'base64');
+
+        // Buffer boş mu kontrol et
+        if (!buffer || buffer.length === 0) {
+            return res.status(400).json({ error: 'Görsel verisi boş veya geçersiz' });
+        }
 
         // Editli kart mı orijinal mi?
         const isEdited = type === 'edited';
