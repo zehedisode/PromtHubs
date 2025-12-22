@@ -1,10 +1,17 @@
 /**
  * STATE MANAGEMENT MODULE
  * PromtHubs Card Creator v5.4
+ * SOLID: OCP - Observable pattern ile genişletmeye açık, değişikliğe kapalı
  */
 
 import { CONFIG, DEFAULT_STATE } from './config.js';
 import { Logger } from './logger.js';
+
+/**
+ * Observable pattern - State değişikliklerini dinleyicilere bildirir
+ * @private
+ */
+const subscribers = new Map();
 
 /**
  * Application state
@@ -21,6 +28,51 @@ export const imageGallery = {
     currentImageSrc: CONFIG.DEFAULT_IMAGE,
     highQualityDownloadSrc: CONFIG.DEFAULT_IMAGE
 };
+
+/**
+ * Subscribe to state changes
+ * @param {string} key - State property key to watch (or '*' for all changes)
+ * @param {Function} callback - Callback function (receives: value, key, oldValue)
+ * @returns {Function} Unsubscribe function
+ */
+export function subscribe(key, callback) {
+    if (!subscribers.has(key)) {
+        subscribers.set(key, new Set());
+    }
+    subscribers.get(key).add(callback);
+
+    // Return unsubscribe function
+    return () => {
+        subscribers.get(key)?.delete(callback);
+    };
+}
+
+/**
+ * Notify subscribers of state change
+ * @private
+ * @param {string} key - Changed property key
+ * @param {*} value - New value
+ * @param {*} oldValue - Previous value
+ */
+function notifySubscribers(key, value, oldValue) {
+    // Notify specific key subscribers
+    subscribers.get(key)?.forEach(cb => {
+        try {
+            cb(value, key, oldValue);
+        } catch (e) {
+            Logger.error('STATE', 'Subscriber callback error', { key, error: e });
+        }
+    });
+
+    // Notify wildcard subscribers
+    subscribers.get('*')?.forEach(cb => {
+        try {
+            cb(value, key, oldValue);
+        } catch (e) {
+            Logger.error('STATE', 'Wildcard subscriber callback error', { key, error: e });
+        }
+    });
+}
 
 /**
  * Load state from localStorage
@@ -63,19 +115,37 @@ export function saveState() {
  * @returns {void}
  */
 export function updateState(key, value) {
+    const oldValue = state[key];
+
+    // Skip if value hasn't changed
+    if (oldValue === value) return;
+
     if (key === 'promptText') {
         Logger.info('STATE', 'Prompt Text Updated', {
-            oldValueLength: state.promptText ? state.promptText.length : 0,
+            oldValueLength: oldValue ? oldValue.length : 0,
             newValueLength: value ? value.length : 0,
-            changeDelta: (value ? value.length : 0) - (state.promptText ? state.promptText.length : 0),
+            changeDelta: (value ? value.length : 0) - (oldValue ? oldValue.length : 0),
             timestamp: new Date().toISOString(),
-            // We can add more context here if needed, like current Model selected
             currentModel: state.model
         });
     }
 
     state[key] = value;
     saveState();
+
+    // Notify subscribers (Observable pattern)
+    notifySubscribers(key, value, oldValue);
+}
+
+/**
+ * Update multiple state properties at once
+ * @param {Object} updates - Object containing key-value pairs to update
+ * @returns {void}
+ */
+export function updateStateMultiple(updates) {
+    Object.entries(updates).forEach(([key, value]) => {
+        updateState(key, value);
+    });
 }
 
 /**
@@ -95,6 +165,10 @@ export function addImageToGallery(src) {
         src: src
     };
     imageGallery.images.push(newImage);
+
+    // Notify gallery subscribers
+    notifySubscribers('gallery:add', newImage, null);
+
     return newImage;
 }
 
@@ -110,14 +184,19 @@ export function removeImageFromGallery(id) {
 
     const index = imageGallery.images.findIndex(img => img.id === id);
     if (index > -1) {
-        const isCurrent = imageGallery.images[index].src === imageGallery.currentImageSrc;
+        const removedImage = imageGallery.images[index];
+        const isCurrent = removedImage.src === imageGallery.currentImageSrc;
         imageGallery.images.splice(index, 1);
+
+        // Notify gallery subscribers
+        notifySubscribers('gallery:remove', removedImage, null);
 
         // If removed image was current, switch to last image
         if (isCurrent) {
             const nextImg = imageGallery.images[imageGallery.images.length - 1];
             imageGallery.currentImageSrc = nextImg.src;
             imageGallery.highQualityDownloadSrc = nextImg.src;
+            notifySubscribers('gallery:current', nextImg, removedImage);
             return true; // Signal that current image changed
         }
     }
@@ -130,6 +209,10 @@ export function removeImageFromGallery(id) {
  * @returns {void}
  */
 export function setCurrentImage(src) {
+    const oldSrc = imageGallery.currentImageSrc;
     imageGallery.currentImageSrc = src;
     imageGallery.highQualityDownloadSrc = src;
+
+    // Notify gallery subscribers
+    notifySubscribers('gallery:current', src, oldSrc);
 }
