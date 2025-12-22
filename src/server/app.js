@@ -37,6 +37,8 @@ app.use(helmet({
             formAction: ["'self'"],
         }
     },
+    // Disable HSTS since we don't have HTTPS
+    hsts: false,
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
