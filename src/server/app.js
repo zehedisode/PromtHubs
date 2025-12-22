@@ -14,9 +14,15 @@ const errorHandler = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
+const helmet = require('helmet');
+const compression = require('compression');
 
 // Trust proxy (for rate limiting behind reverse proxy)
 app.set('trust proxy', 1);
+
+// Security & Performance Middleware
+app.use(helmet());
+app.use(compression());
 
 // Middleware
 app.use(cors({
