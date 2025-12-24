@@ -54,6 +54,8 @@ export async function handleExport() {
             if (!response.ok) {
                 if (result.error && result.error.includes('TELEGRAM_CHANNEL_ID')) {
                     Toast.error('Telegram Hatası: Kanal ID eksik (.env)');
+                } else if (result.error && result.error.includes('TELEGRAM_BOT_TOKEN')) {
+                    Toast.error('Telegram Hatası: Bot Token eksik (.env)');
                 } else {
                     throw new Error(result.error || `Server Error: ${response.status}`);
                 }
